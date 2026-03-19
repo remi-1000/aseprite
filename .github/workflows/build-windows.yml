@@ -1,0 +1,40 @@
+name: Build Aseprite Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Aseprite
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download Skia m124
+        shell: bash
+        run: |
+          curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Windows-Release-x64.zip
+          mkdir -p $HOME/deps/skia
+          unzip -q skia.zip -d $HOME/deps/skia
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build Aseprite
+        shell: cmd
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLAF_BACKEND=skia -DSKIA_DIR=%USERPROFILE%\deps\skia -DSKIA_LIBRARY_DIR=%USERPROFILE%\deps\skia\out\Release-x64 -DSKIA_LIBRARY=%USERPROFILE%\deps\skia\out\Release-x64\skia.lib -G Ninja ..
+          ninja aseprite
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aseprite-windows-x64
+          path: build/bin/
+          retention-days: 30
